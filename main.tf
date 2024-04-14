@@ -6,12 +6,6 @@ resource "random_string" "suffix" {
 }
 
 locals {
-  rg_name  = "watsonx-rg-${random_string.suffix.result}"
-  ce_name  = "watsonx-ce-${random_string.suffix.result}"
-}
-
-
-locals {
   project_name = "${var.project_name}"
   resource_group = "${var.resource_group}-${random_string.suffix.result}"
   cr_namespace = "${var.cr_namespace}"
@@ -21,9 +15,8 @@ locals {
   appname = "${var.ce_appname}"
 }
 
-
-resource "ibm_resource_group" "resource_group" {
-  name = local.resource_group
+data "ibm_resource_group" "group" {
+  name = "${var.resource_group}"
 }
 
 resource "ibm_code_engine_project" "code_engine_project_instance" {
@@ -53,7 +46,8 @@ resource "ibm_code_engine_build" "code_engine_build_instance" {
   name          = local.buildname
   output_image  = "us.icr.io/${ibm_cr_namespace.rg_namespace.id}/rag-llm"
   output_secret = ibm_code_engine_secret.code_engine_secret_instance.name
-  source_url    = "https://github.com/ibm-build-lab/RAG-LLM-Service"
+  source_url    = "${var.source_url}"
+  source_revision = "${var.source_revision}"
   strategy_type = "dockerfile"
 }
 
@@ -76,7 +70,7 @@ resource "restapi_object" "buildrun" {
       name = "rag-llm-build-run"
       output_image  = "${ibm_code_engine_build.code_engine_build_instance.output_image}:latest"
       output_secret = ibm_code_engine_secret.code_engine_secret_instance.name
-      source_url    = "https://github.com/ibm-build-lab/RAG-LLM-Service"
+      source_url    = "${var.source_url}"
       strategy_type = "dockerfile"
       timeout = 3600
     }
@@ -98,7 +92,7 @@ resource "ibm_code_engine_app" "code_engine_app_instance" {
   image_reference = "${ibm_code_engine_build.code_engine_build_instance.output_image}:latest"
   image_secret = local.secret
   image_port = "4050"
-  scale_initial_instances = "0"
+  scale_initial_instances = "1"
   scale_max_instances = "1"
 
 
@@ -114,12 +108,17 @@ resource "ibm_code_engine_app" "code_engine_app_instance" {
   }
   run_env_variables {
     type  = "literal"
+    name  = "COS_ENDPOINT_URL"
+    value = var.cos_endpoint_url
+  }
+  run_env_variables {
+    type  = "literal"
     name  = "BUCKET_NAME"
     value = var.bucket_name
   }
   run_env_variables {
     type  = "literal"
-    name  = "PROJECT_ID"
+    name  = "WX_PROJECT_ID"
     value = var.wx_project_id
   }
   run_env_variables {
@@ -141,6 +140,16 @@ resource "ibm_code_engine_app" "code_engine_app_instance" {
     type  = "literal"
     name  = "WX_URL"
     value = var.wx_url
+  }
+  run_env_variables {
+    type  = "literal"
+    name  = "MODEL_ID"
+    value = var.model_id
+  }
+  run_env_variables {
+    type  = "literal"
+    name  = "MODEL_PARAMETERS"
+    value = var.model_parameters
   }
   run_env_variables {
     type  = "literal"

@@ -8,6 +8,16 @@ variable "resource_group" {
   default = "rag-llm"
 }
 
+variable "source_url" {
+  type    = string
+  default = "https://github.com/ibm-build-lab/RAG-LLM-Service"
+}
+
+variable "source_revision" {
+  type    = string
+  default = "modeldeploy"
+}
+
 variable "cr_namespace" {
   type    = string
   default = "rag-images"
@@ -88,6 +98,18 @@ variable "wxd_url" {
 variable "wx_url" {
   type        = string
   description = "watsonx URL"
+  default = ""
+}
+
+variable "model_id" {
+  type        = string
+  description = "watsonx Model ID"
+  default = ""
+}
+
+variable "model_parameters" {
+  type        = string
+  description = "watsonx Model parameters"
   default = ""
 }
 
