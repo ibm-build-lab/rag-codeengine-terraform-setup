@@ -21,12 +21,12 @@ data "ibm_resource_group" "group" {
 
 resource "ibm_code_engine_project" "code_engine_project_instance" {
   name              = local.project_name
-  resource_group_id = ibm_resource_group.resource_group.id
+  resource_group_id = data.ibm_resource_group.group.id
 }
 
 resource "ibm_cr_namespace" "rg_namespace" {
   name              = local.cr_namespace
-  resource_group_id = ibm_resource_group.resource_group.id
+  resource_group_id = data.ibm_resource_group.group.id
 }
 
 resource "ibm_code_engine_secret" "code_engine_secret_instance" {
