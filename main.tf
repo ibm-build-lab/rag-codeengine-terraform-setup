@@ -79,7 +79,7 @@ resource "restapi_object" "buildrun" {
 }
 
 resource "time_sleep" "wait_for_build" {
-  create_duration = "5m"
+  create_duration = "10m"
 
   depends_on = [
     restapi_object.buildrun
@@ -113,13 +113,23 @@ resource "ibm_code_engine_app" "code_engine_app_instance" {
   }
   run_env_variables {
     type  = "literal"
-    name  = "BUCKET_NAME"
-    value = var.bucket_name
+    name  = "RAG_APP_API_KEY"
+    value = var.rag_app_api_key
+  }
+  run_env_variables {
+    type  = "literal"
+    name  = "IBM_CLOUD_API_KEY"
+    value = var.ibmcloud_api_key
   }
   run_env_variables {
     type  = "literal"
     name  = "WX_PROJECT_ID"
     value = var.wx_project_id
+  }
+  run_env_variables {
+    type  = "literal"
+    name  = "WX_URL"
+    value = var.wx_url
   }
   run_env_variables {
     type  = "literal"
@@ -138,28 +148,13 @@ resource "ibm_code_engine_app" "code_engine_app_instance" {
   }
   run_env_variables {
     type  = "literal"
-    name  = "WX_URL"
-    value = var.wx_url
+    name  = "WD_API_KEY"
+    value = var.wd_api_key
   }
   run_env_variables {
     type  = "literal"
-    name  = "MODEL_ID"
-    value = var.model_id
-  }
-  run_env_variables {
-    type  = "literal"
-    name  = "MODEL_PARAMETERS"
-    value = var.model_parameters
-  }
-  run_env_variables {
-    type  = "literal"
-    name  = "INDEX_NAME"
-    value = var.index_name
-  }
-  run_env_variables {
-    type  = "literal"
-    name  = "PIPELINE_NAME"
-    value = var.pipeline_name
+    name  = "WD_URL"
+    value = var.wd_url
   }
 
 }

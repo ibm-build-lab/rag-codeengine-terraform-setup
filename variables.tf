@@ -65,15 +65,21 @@ variable "cos_endpoint_url" {
   default = ""
 }
 
-variable "bucket_name" {
+variable "rag_app_api_key" {
   type        = string
-  description = "Bucket Name"
+  description = "RAG APP User Created Key"
   default = ""
 }
 
 variable "wx_project_id" {
   type        = string
   description = "watsonx project id"
+  default = ""
+}
+
+variable "wx_url" {
+  type        = string
+  description = "watsonx URL"
   default = ""
 }
 
@@ -95,39 +101,15 @@ variable "wxd_url" {
   default = ""
 }
 
-variable "wx_url" {
+variable "wd_api_key" {
   type        = string
-  description = "watsonx URL"
+  description = "watson discovery apikey"
   default = ""
 }
 
-variable "model_id" {
+variable "wd_url" {
   type        = string
-  description = "watsonx Model ID"
-  default = ""
-}
-
-variable "model_parameters" {
-  type        = string
-  description = "watsonx Model parameters"
-  default = ""
-}
-
-variable "index_name" {
-  type        = string
-  description = "watsonx Discovery index"
-  default = ""
-}
-
-variable "pipeline_name" {
-  type        = string
-  description = "watsonx Discovery pipeline"
-  default = ""
-}
-
-variable "llm_instructions" {
-  type        = string
-  description = "watsonx LLM instruction"
+  description = "watson discovery URL"
   default = ""
 }
 
