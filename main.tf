@@ -13,44 +13,8 @@ locals {
   imagename = "${var.cr_imagename}"
   buildname = "${var.ce_buildname}"
   appname = "${var.ce_appname}"
+  project_id = data.external.project_search.result.exists == "true" ? data.external.project_search.result.project_id : ibm_code_engine_project.code_engine_project_instance[0].id
 }
-
-data "ibm_resource_group" "group" {
-  name = "${var.resource_group}"
-}
-
-resource "ibm_code_engine_project" "code_engine_project_instance" {
-  name              = local.project_name
-  resource_group_id = data.ibm_resource_group.group.id
-}
-
-resource "ibm_cr_namespace" "rg_namespace" {
-  name              = local.cr_namespace
-  resource_group_id = data.ibm_resource_group.group.id
-}
-
-resource "ibm_code_engine_secret" "code_engine_secret_instance" {
-  project_id = ibm_code_engine_project.code_engine_project_instance.project_id
-  name = local.secret
-  format = "registry"
-  data = {
-      username="iamapikey"
-      password="${var.ibmcloud_api_key}"
-      server="us.icr.io"
-      email=""
-    }
-}
-
-resource "ibm_code_engine_build" "code_engine_build_instance" {
-  project_id    = ibm_code_engine_project.code_engine_project_instance.project_id
-  name          = local.buildname
-  output_image  = "us.icr.io/${ibm_cr_namespace.rg_namespace.id}/rag-llm"
-  output_secret = ibm_code_engine_secret.code_engine_secret_instance.name
-  source_url    = "${var.source_url}"
-  source_revision = "${var.source_revision}"
-  strategy_type = "dockerfile"
-}
-
 
 data "ibm_iam_auth_token" "tokendata" {}
 
@@ -63,14 +27,74 @@ provider "restapi" {
   }
 }
 
+data "ibm_resource_group" "group" {
+  name = "${var.resource_group}"
+}
+
+# Grab the project_id if it exists
+data "external" "project_search" {
+  program = ["bash", "${path.module}/scripts/fetch_projectid.sh", "${var.project_name}", data.ibm_iam_auth_token.tokendata.iam_access_token]
+}
+
+# Create a code engine project if it's needed
+resource "ibm_code_engine_project" "code_engine_project_instance" {
+  depends_on = [ data.external.project_search ]
+  count             = data.external.project_search.result.exists == "false" ? 1 : 0
+  name              = local.project_name
+  resource_group_id = data.ibm_resource_group.group.id
+}
+
+# Grab a list of namespaces in the RG
+data "ibm_cr_namespaces" "get_rg_namespace" {}
+
+# Determine if a cr_namespace exists, if it does, use it, otherwise create it.
+locals {
+  existing_namespace = [for ns in data.ibm_cr_namespaces.get_rg_namespace.namespaces : ns if ns.name == local.cr_namespace]
+  namespace_exists = length(local.existing_namespace) > 0
+}
+
+# Create a cr_namespace
+resource "ibm_cr_namespace" "rg_namespace" {
+  depends_on = [ data.ibm_cr_namespaces.get_rg_namespace ]
+  count             = local.namespace_exists ? 0 : 1
+  name              = local.cr_namespace
+  resource_group_id = data.ibm_resource_group.group.id
+}
+
+# Create a secret in code engine for pull the image
+resource "ibm_code_engine_secret" "code_engine_secret_instance" {
+  project_id = local.project_id
+  name = local.secret
+  format = "registry"
+  data = {
+      username="iamapikey"
+      password="${var.ibmcloud_api_key}"
+      server="us.icr.io"
+      email=""
+    }
+}
+
+# Create a build instance
+resource "ibm_code_engine_build" "code_engine_build_instance" {
+  project_id    = local.project_id
+  name          = local.buildname
+  output_image  = "us.icr.io/${local.cr_namespace}/rag-llm"
+  output_secret = ibm_code_engine_secret.code_engine_secret_instance.name
+  source_url    = "${var.source_url}"
+  source_revision = "${var.source_revision}"
+  strategy_type = "dockerfile"
+}
+
+# Create a build run
 resource "restapi_object" "buildrun" {
-  path     = "/v2/projects/${ibm_code_engine_project.code_engine_project_instance.project_id}/build_runs"
+  path     = "/v2/projects/${local.project_id}/build_runs"
   data = jsonencode(
     {
       name = "rag-llm-build-run"
       output_image  = "${ibm_code_engine_build.code_engine_build_instance.output_image}:latest"
       output_secret = ibm_code_engine_secret.code_engine_secret_instance.name
       source_url    = "${var.source_url}"
+      source_revision = "${var.source_revision}"
       strategy_type = "dockerfile"
       timeout = 3600
     }
@@ -78,16 +102,24 @@ resource "restapi_object" "buildrun" {
   id_attribute = "name"
 }
 
+# Waiting a flat 5min to make sure the build_run completes.
+# Check the status of the build in the build images tab in the project.
 resource "time_sleep" "wait_for_build" {
-  create_duration = "10m"
+  create_duration = "5m"
 
   depends_on = [
     restapi_object.buildrun
   ]
 }
 
+# Create an application and use the image built in the build_run
+# Sets the env variables
 resource "ibm_code_engine_app" "code_engine_app_instance" {
-  project_id      = ibm_code_engine_project.code_engine_project_instance.project_id
+  depends_on = [
+    time_sleep.wait_for_build
+  ]
+
+  project_id      = local.project_id
   name            = local.appname
   image_reference = "${ibm_code_engine_build.code_engine_build_instance.output_image}:latest"
   image_secret = local.secret
@@ -156,6 +188,5 @@ resource "ibm_code_engine_app" "code_engine_app_instance" {
     name  = "WD_URL"
     value = var.wd_url
   }
-
 }
 
