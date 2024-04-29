@@ -2,7 +2,7 @@
 ibmcloud_api_key = "" # See https://cloud.ibm.com/docs/account?topic=account-userapikey&interface=ui#create_user_key
 region = "us-south"   # Region where this app is to be deployed
 resource_group = ""   # Resource group where application is to be deployed
-cr_namespace = ""     # Container Repository Namespace. Script will create if doesn't exist. Can create via "ibmcloud cr namespace-add <unique namespace>"
+cr_namespace = ""     # Container Registry Namespace. Script will create if doesn't exist. Can create via "ibmcloud cr namespace-add <unique namespace>"
 
 # Cloud Object Storage variables
 cos_ibm_cloud_api_key = ""  # Retrieve this from your COS instance service credentials.  See https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-service-credentials
